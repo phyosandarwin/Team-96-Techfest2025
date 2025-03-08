@@ -23,3 +23,7 @@ def scrape_website(url):
     texts = [words.get_text(strip=True) for words in tags]
     
     return page_title, texts
+
+title, texts = scrape_website("https://www.straitstimes.com/asia/east-asia/south-koreas-president-yoon-freed-after-52-days-in-detention")
+print(title)
+print(texts)

@@ -1,7 +1,4 @@
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-import string
+
 
 """
 Extract keywords from a text input by:

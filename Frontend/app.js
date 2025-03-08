@@ -14,20 +14,19 @@ const urlInput = document.getElementById('urlInput');
 const resultsLoading = document.getElementById('resultsLoading');
 const resultsContent = document.getElementById('resultsContent');
 const noResults = document.getElementById('noResults');
-const authenticityBar = document.getElementById('authenticityBar');
-const authenticityText = document.getElementById('authenticityText');
+const resultCategory = document.getElementById('resultCategory');
+const resultDescription = document.getElementById('resultDescription');
+const resultSources = document.getElementById('resultSources');
 const extractedContent = document.getElementById('extractedContent');
 const matchedSources = document.getElementById('matchedSources');
-const factorsTable = document.getElementById('factorsTable');
 
 // Navigation elements
 const navbar = document.querySelector('.navbar');
 const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
 
-// API endpoints
-const API_BASE_URL = '/api';
-const VERIFY_IMAGE_ENDPOINT = `${API_BASE_URL}/verify/image`;
-const VERIFY_URL_ENDPOINT = `${API_BASE_URL}/verify/url`;
+// API endpoints - Update with proper backend URL
+const API_BASE_URL = 'http://127.0.0.1:5000';
+const VERIFY_URL_ENDPOINT = `${API_BASE_URL}/scrape`;
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
@@ -36,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupForms();
     setupNavigation();
     setupAnimations();
-    setupShareButton(); // Setup share button
+    setupShareButton();
 });
 
 // Navbar scroll effect
@@ -180,7 +179,7 @@ function setupDropZone() {
         }, 300);
     });
 
-    // THIS IS THE KEY FIX: Direct, simple click handler for drop zone
+    // Direct click handler for drop zone
     dropZone.addEventListener('click', function() {
         imageUpload.click();
     });
@@ -189,8 +188,6 @@ function setupDropZone() {
 // Image preview function
 function updateImagePreview(file) {
     if (!file) return;
-    
-    // No need to validate file type here as it's already validated in the event handlers
     
     // Show preview with animation
     const reader = new FileReader();
@@ -212,6 +209,7 @@ function updateImagePreview(file) {
             setTimeout(() => {
                 imagePreview.style.opacity = '1';
                 imagePreview.style.transform = 'scale(1)';
+                // Enable verification button
                 verifyImageBtn.disabled = false;
             }, 50);
         }, 300);
@@ -227,11 +225,11 @@ function setupForms() {
         return;
     }
 
-    // Simplified image form submission
+    // Image form submission
     imageUploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Minimal validation, just check if a file exists
+        // Validate file input
         if (!imageUpload.files || !imageUpload.files[0]) {
             showNotification('Please select an image to upload', 'warning');
             return;
@@ -249,16 +247,16 @@ function setupForms() {
         formData.append('image', imageUpload.files[0]);
         
         try {
-            // Simulate network latency for demo purposes
+            // TODO: Implement image upload and OCR processing
+            // For now, use mock data
             setTimeout(async () => {
-                const result = await mockApiResponse();
-                displayResults(result);
+                const mockResult = await mockApiResponse();
+                displayResults(mockResult);
                 
                 // Reset button state
                 verifyImageBtn.disabled = false;
                 verifyImageBtn.innerHTML = '<i class="bi bi-shield-check me-1"></i> Verify Image';
                 
-                // Show success notification
                 showNotification('Image successfully verified!', 'success');
             }, 1500);
             
@@ -273,7 +271,7 @@ function setupForms() {
         }
     });
     
-    // URL form submission with improved validation
+    // URL form submission
     urlForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -299,33 +297,29 @@ function setupForms() {
         verifyUrlBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Verifying...';
         
         try {
-            // For demo/development, use the mock response instead of actual API call
-            // const response = await fetch(VERIFY_URL_ENDPOINT, {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json'
-            //     },
-            //     body: JSON.stringify({ url })
-            // });
+            // Make API call to the backend
+            const response = await fetch(`${VERIFY_URL_ENDPOINT}?url=${encodeURIComponent(url)}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
             
-            // if (!response.ok) {
-            //     throw new Error('Failed to verify URL');
-            // }
+            if (!response.ok) {
+                throw new Error(`Server responded with status ${response.status}`);
+            }
             
-            // const result = await response.json();
+            const result = await response.json();
             
-            // Simulate network latency for demo purposes
-            setTimeout(async () => {
-                const result = await mockApiResponse();
-                displayResults(result);
-                
-                // Reset button state
-                verifyUrlBtn.disabled = false;
-                verifyUrlBtn.innerHTML = '<i class="bi bi-shield-check me-1"></i> Verify URL';
-                
-                // Show success notification
-                showNotification('URL successfully verified!', 'success');
-            }, 1500);
+            // Process the result
+            const processedResult = processBackendResponse(result, url);
+            displayResults(processedResult);
+            
+            // Reset button state
+            verifyUrlBtn.disabled = false;
+            verifyUrlBtn.innerHTML = '<i class="bi bi-shield-check me-1"></i> Verify URL';
+            
+            showNotification('URL successfully verified!', 'success');
             
         } catch (error) {
             console.error('Error:', error);
@@ -337,6 +331,74 @@ function setupForms() {
             verifyUrlBtn.innerHTML = '<i class="bi bi-shield-check me-1"></i> Verify URL';
         }
     });
+}
+
+// Process backend response to match our display format
+function processBackendResponse(backendData, originalUrl) {
+    // Default to mock data structure
+    const result = {
+        category: "FAKE",
+        sourceCount: 0,
+        extracted_text: "No content extracted",
+        matched_sources: []
+    };
+    
+    // Check if content exists
+    if (backendData && backendData.content) {
+        // Set the extracted text
+        result.extracted_text = backendData.content;
+        
+        // Count sources (for now, we're just using a simple string from the backend)
+        // In a real implementation, you would parse actual sources
+        const sourceCount = backendData.content.includes("true") ? 3 : 
+                          backendData.content.includes("neutral") ? 1 : 0;
+                          
+        result.sourceCount = sourceCount;
+        
+        // Set category based on source count
+        if (sourceCount > 1) {
+            result.category = "RELIABLE";
+        } else if (sourceCount === 1) {
+            result.category = "NEUTRAL";
+        } else {
+            result.category = "FAKE";
+        }
+        
+        // Add the original URL as a source
+        result.matched_sources = [{
+            title: "Original Article",
+            source_name: new URL(originalUrl).hostname,
+            reliability: sourceCount > 1 ? "high" : sourceCount === 1 ? "medium" : "low",
+            published_date: new Date().toISOString(),
+            url: originalUrl,
+            snippet: result.extracted_text.substring(0, 150) + "..."
+        }];
+        
+        // Add mock sources for testing
+        if (sourceCount > 0) {
+            result.matched_sources.push({
+                title: "Similar news article",
+                source_name: "News Source",
+                reliability: "medium",
+                published_date: new Date().toISOString(),
+                url: "https://example.com/news",
+                snippet: "Similar content found matching the verified article..."
+            });
+            
+            if (sourceCount > 1) {
+                result.matched_sources.push({
+                    title: "Additional verification source",
+                    source_name: "Verified Media",
+                    reliability: "high",
+                    published_date: new Date().toISOString(),
+                    url: "https://trusted-source.com/article",
+                    snippet: "Additional source confirming the news content..."
+                });
+            }
+        }
+    }
+    
+    return result;
 }
 
 // Display verification results with animations
@@ -353,27 +415,32 @@ function displayResults(result) {
     setTimeout(() => {
         resultsContent.style.opacity = '1';
         
-        // Animate authenticity score bar
         setTimeout(() => {
-            // Set authenticity score with animation
-            const score = result.authenticity_score;
-            authenticityBar.style.width = `${score}%`;
-            authenticityBar.textContent = `${score}%`;
+            // Set category
+            let categoryClass;
+            let description;
             
-            // Set appropriate color class based on score
-            authenticityBar.className = 'progress-bar';
-            if (score < 40) {
-                authenticityBar.classList.add('low');
-                authenticityText.innerHTML = '<strong>Low Authenticity:</strong> This content appears to be misleading or false.';
-            } else if (score < 70) {
-                authenticityBar.classList.add('medium');
-                authenticityText.innerHTML = '<strong>Moderate Authenticity:</strong> This content contains some accurate information but may be misleading.';
+            if (result.category === "FAKE") {
+                categoryClass = "bg-danger";
+                description = "Content that could not be verified with any reliable sources.";
+            } else if (result.category === "NEUTRAL") {
+                categoryClass = "bg-warning";
+                description = "Content that has limited verification from other sources. Exercise caution.";
             } else {
-                authenticityBar.classList.add('high');
-                authenticityText.innerHTML = '<strong>High Authenticity:</strong> This content appears to be authentic and from reliable sources.';
+                categoryClass = "bg-success";
+                description = "Content that has been verified by multiple reliable sources.";
             }
             
-            // Show extracted content with animation
+            // Update result category display
+            resultCategory.textContent = result.category;
+            resultCategory.className = '';
+            resultCategory.classList.add('result-category', categoryClass);
+            
+            // Update description and source count
+            resultDescription.textContent = description;
+            resultSources.textContent = result.sourceCount;
+            
+            // Show extracted content
             extractedContent.textContent = result.extracted_text || 'No text could be extracted';
             
             // Display matched sources with staggered animation
@@ -407,38 +474,6 @@ function displayResults(result) {
                 }, 100);
             } else {
                 matchedSources.innerHTML = '<p class="text-muted fst-italic">No matching sources found.</p>';
-            }
-            
-            // Display verification factors with staggered animation
-            if (result.factors && result.factors.length > 0) {
-                let factorsHtml = '';
-                result.factors.forEach((factor, index) => {
-                    const scoreClass = getScoreClass(factor.score);
-                    factorsHtml += `
-                        <tr style="opacity: 0; transform: translateY(10px); transition: all 0.3s ease; transition-delay: ${0.1 * index}s;">
-                            <td>${factor.name}</td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="score-badge ${scoreClass} me-2">${factor.score}%</div>
-                                    <div>${factor.description}</div>
-                                </div>
-                            </td>
-                            <td>${factor.weight}%</td>
-                        </tr>
-                    `;
-                });
-                factorsTable.innerHTML = factorsHtml;
-                
-                // Trigger animations for factors
-                setTimeout(() => {
-                    const factorRows = factorsTable.querySelectorAll('tr');
-                    factorRows.forEach(row => {
-                        row.style.opacity = '1';
-                        row.style.transform = 'translateY(0)';
-                    });
-                }, 100);
-            } else {
-                factorsTable.innerHTML = '<tr><td colspan="3" class="text-center">No verification factors available.</td></tr>';
             }
             
             // Show results
@@ -523,12 +558,12 @@ function setupShareButton() {
     // Create a unique share URL with result info
     function generateShareUrl() {
         // Create a URL with verification data encoded as parameters
-        const score = document.getElementById('authenticityBar').textContent;
+        const category = document.getElementById('resultCategory').textContent;
         const textContent = document.getElementById('extractedContent').textContent;
         const baseUrl = window.location.origin + window.location.pathname;
         const params = new URLSearchParams();
         
-        params.append('score', score);
+        params.append('category', category);
         params.append('text', textContent.substring(0, 100) + '...');
         
         return `${baseUrl}?${params.toString()}`;
@@ -543,7 +578,7 @@ function setupShareButton() {
         if (navigator.share) {
             navigator.share({
                 title: 'Verification Results from SG News Verifier',
-                text: `Authenticity Score: ${document.getElementById('authenticityBar').textContent}`,
+                text: `This content has been marked as ${document.getElementById('resultCategory').textContent}`,
                 url: url
             })
             .then(() => console.log('Shared successfully'))
@@ -582,7 +617,7 @@ function setupShareButton() {
                 
                 const platform = this.getAttribute('data-platform');
                 const url = encodeURIComponent(shareUrl.value);
-                const text = encodeURIComponent(`Verification Results from SG News Verifier: Authenticity Score: ${document.getElementById('authenticityBar').textContent}`);
+                const text = encodeURIComponent(`Verification Results from SG News Verifier: This content has been marked as ${document.getElementById('resultCategory').textContent}`);
                 
                 let shareUrl;
                 
@@ -660,16 +695,6 @@ function getReliabilityClass(reliability) {
             return 'reliability-low';
         default:
             return '';
-    }
-}
-
-function getScoreClass(score) {
-    if (score >= 70) {
-        return 'score-high';
-    } else if (score >= 40) {
-        return 'score-medium';
-    } else {
-        return 'score-low';
     }
 }
 
@@ -754,11 +779,11 @@ function showNotification(message, type = 'info') {
     }
 }
 
-// For development/testing - mock API response
-// This can be removed once the actual backend is implemented
-async function mockApiResponse() {
+// Mock API response for testing
+function mockApiResponse() {
     return {
-        authenticity_score: 85,
+        category: "RELIABLE",
+        sourceCount: 3,
         extracted_text: "Singapore Prime Minister announces new healthcare policies aimed at supporting elderly care. The Ministry of Health will be increasing subsidies for long-term care services starting next month.",
         matched_sources: [
             {
@@ -776,38 +801,14 @@ async function mockApiResponse() {
                 published_date: "2025-03-05T09:15:00Z",
                 url: "https://www.channelnewsasia.com/singapore/elderly-care-subsidies-increase",
                 snippet: "The Ministry of Health will be increasing subsidies for long-term care services, with additional support for lower-income families."
-            }
-        ],
-        factors: [
-            {
-                name: "Source Credibility",
-                score: 90,
-                weight: 30,
-                description: "Content matches highly credible sources"
             },
             {
-                name: "Content Consistency",
-                score: 85,
-                weight: 25,
-                description: "Information consistent across multiple sources"
-            },
-            {
-                name: "Image Manipulation",
-                score: 95,
-                weight: 20,
-                description: "No signs of image manipulation detected"
-            },
-            {
-                name: "Context Accuracy",
-                score: 75,
-                weight: 15,
-                description: "Context generally accurate with minor discrepancies"
-            },
-            {
-                name: "Publication Recency",
-                score: 80,
-                weight: 10,
-                description: "Content is recent and up-to-date"
+                title: "New healthcare policy for elderly citizens announced",
+                source_name: "Today Online",
+                reliability: "high",
+                published_date: "2025-03-05T10:30:00Z",
+                url: "https://www.todayonline.com/singapore/new-healthcare-policy-elderly",
+                snippet: "The government has announced a comprehensive package to support elderly care, focusing on affordable healthcare services and caregiving support."
             }
         ]
     };

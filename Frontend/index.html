@@ -12,6 +12,33 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=1.0.5">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <style>
+        .result-category {
+            font-size: 1.8rem;
+            font-weight: 700;
+            padding: 1rem;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .bg-danger {
+            background-color: #D64045 !important;
+        }
+        .bg-warning {
+            background-color: #E9B949 !important;
+        }
+        .bg-success {
+            background-color: #3CAB5A !important;
+        }
+        .result-box {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            background-color: #f8f9fa;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -146,21 +173,20 @@
                         </div>
                         
                         <div id="resultsContent" class="d-none">
-                            <div class="authenticity-meter mb-4">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h5 class="mb-0">Authenticity Score</h5>
-                                    <button id="shareResultsBtn" class="btn btn-sm btn-outline-primary d-flex align-items-center">
-                                        <i class="bi bi-share-fill me-2"></i> Share
-                                    </button>
-                                </div>
-                                <div class="progress" style="height: 25px;">
-                                    <div id="authenticityBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                                </div>
-                                <p id="authenticityText" class="mt-3"></p>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="mb-0">Verification Result</h5>
+                                <button id="shareResultsBtn" class="btn btn-sm btn-outline-primary d-flex align-items-center">
+                                    <i class="bi bi-share-fill me-2"></i> Share
+                                </button>
+                            </div>
+                            
+                            <div class="result-box">
+                                <div id="resultCategory" class="result-category bg-danger">FAKE</div>
+                                <p id="resultDescription">Content that could not be verified with any reliable sources.</p>
+                                <p><strong>Sources found:</strong> <span id="resultSources">0</span></p>
                             </div>
                             
                             <div class="result-details">
-                                <h5>Analysis Details</h5>
                                 <div class="card mb-3">
                                     <div class="card-header">
                                         <i class="bi bi-chat-quote me-1"></i> Extracted Content
@@ -180,26 +206,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div class="card">
-                                    <div class="card-header">
-                                        <i class="bi bi-graph-up me-1"></i> Verification Factors
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>Factor</th>
-                                                    <th>Score</th>
-                                                    <th>Weight</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="factorsTable">
-                                                <!-- Will be populated by JS -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                         
@@ -213,45 +219,95 @@
             </div>
         </div>
         
+        <!-- Result Categories Explanation -->
+        <div class="row mt-5 mb-5">
+            <div class="col-12 text-center mb-4 slide-up" style="animation-delay: 0.6s;">
+                <h2>Understanding Results</h2>
+                <p class="lead">How we categorize news verification results</p>
+            </div>
+            <div class="col-md-4 mb-4 slide-up" style="animation-delay: 0.7s;">
+                <div class="card h-100 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">FAKE</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-center mb-3">
+                            <i class="bi bi-x-circle-fill text-danger" style="font-size: 3rem;"></i>
+                        </div>
+                        <p>Content that could not be verified with any reliable sources.</p>
+                        <p class="mb-0"><strong>Sources found:</strong> 0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4 slide-up" style="animation-delay: 0.8s;">
+                <div class="card h-100 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">NEUTRAL</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-center mb-3">
+                            <i class="bi bi-question-circle-fill text-warning" style="font-size: 3rem;"></i>
+                        </div>
+                        <p>Content that has limited verification from other sources. Exercise caution.</p>
+                        <p class="mb-0"><strong>Sources found:</strong> 1</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4 slide-up" style="animation-delay: 0.9s;">
+                <div class="card h-100 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">RELIABLE</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-center mb-3">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                        </div>
+                        <p>Content that has been verified by multiple reliable sources.</p>
+                        <p class="mb-0"><strong>Sources found:</strong> 2+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- How It Works Section -->
         <div class="row mt-5 mb-5" id="how-it-works">
-            <div class="col-12 text-center mb-4 slide-up" style="animation-delay: 0.6s;">
+            <div class="col-12 text-center mb-4 slide-up" style="animation-delay: 1.0s;">
                 <h2>How It Works</h2>
                 <p class="lead">Our verification tool uses advanced AI to analyze content authenticity</p>
             </div>
-            <div class="col-md-4 mb-4 slide-up" style="animation-delay: 0.7s;">
+            <div class="col-md-4 mb-4 slide-up" style="animation-delay: 1.1s;">
                 <div class="how-it-works-step">
                     <div class="step-number">1</div>
                     <h5>Submit Content</h5>
                     <p>Upload a screenshot of news or provide a URL to a news article you'd like to verify</p>
                 </div>
             </div>
-            <div class="col-md-4 mb-4 slide-up" style="animation-delay: 0.8s;">
+            <div class="col-md-4 mb-4 slide-up" style="animation-delay: 1.2s;">
                 <div class="how-it-works-step">
                     <div class="step-number">2</div>
                     <h5>AI Analysis</h5>
                     <p>Our advanced models extract text, identify claims, and check against reliable sources</p>
                 </div>
             </div>
-            <div class="col-md-4 mb-4 slide-up" style="animation-delay: 0.9s;">
+            <div class="col-md-4 mb-4 slide-up" style="animation-delay: 1.3s;">
                 <div class="how-it-works-step">
                     <div class="step-number">3</div>
                     <h5>Get Results</h5>
-                    <p>View the authenticity score, matched sources, and detailed analysis of the content</p>
+                    <p>View whether the news is Fake, Neutral, or Reliable based on the number of confirming sources</p>
                 </div>
             </div>
         </div>
         
         <!-- About Section -->
         <div class="row mt-5 mb-5" id="about">
-            <div class="col-md-6 slide-up" style="animation-delay: 1s;">
+            <div class="col-md-6 slide-up" style="animation-delay: 1.4s;">
                 <h2>About SG News Verifier</h2>
                 <p>SG News Verifier is a cutting-edge tool designed to combat the spread of misinformation in Singapore. Our platform uses artificial intelligence and machine learning to analyze news content and verify its authenticity.</p>
                 <p>We compare submitted content against reliable sources, check for manipulated images, and provide detailed analysis to help users make informed decisions about the information they consume.</p>
                 <p>Our mission is to promote media literacy and create a more informed society by giving everyone access to powerful verification tools.</p>
                 <a href="#" class="btn btn-outline-primary mt-3">Learn More About Us</a>
             </div>
-            <div class="col-md-6 slide-up" style="animation-delay: 1.1s;">
+            <div class="col-md-6 slide-up" style="animation-delay: 1.5s;">
                 <div class="card h-100">
                     <div class="card-body">
                         <h4 class="mb-4">Why Use SG News Verifier?</h4>
@@ -292,7 +348,7 @@
     <section class="bg-light py-5" id="contact">
         <div class="container">
             <div class="row">
-                <div class="col-md-6 offset-md-3 text-center slide-up" style="animation-delay: 1.2s;">
+                <div class="col-md-6 offset-md-3 text-center slide-up" style="animation-delay: 1.6s;">
                     <h2>Contact Us</h2>
                     <p class="lead mb-4">Have questions or feedback? Get in touch with our team.</p>
                     <form>
@@ -414,8 +470,12 @@
         </div>
     </footer>
 
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js?v=1.0.6"></script>
+    
+    <!-- Custom JS -->
+    <script src="app.js?v=1.0.7"></script>
+    
     <script>
         // Force reload on each visit by adding timestamp to URLs
         document.addEventListener('DOMContentLoaded', function() {
@@ -446,4 +506,4 @@
         }
     </script>
 </body>
-</html>
+</html>"

@@ -41,18 +41,15 @@ def scrape_endpoint():
         
         articles = [
             {
-                "source_id": article["source"]["id"],
                 "source_name": article["source"]["name"],
                 "title": article["title"],
                 "url": article["url"],
                 "publishedAt": article["publishedAt"],
-                "content": article["content"]
             }
             for article in news_sources["articles"]
         ]
     
         return jsonify({
-            'contents': 'true',
             'matched_sources': articles
         }), 200    
     
@@ -84,18 +81,15 @@ def upload_image():
     
     articles = [
         {
-            "source_id": article["source"]["id"],
             "source_name": article["source"]["name"],
             "title": article["title"],
             "url": article["url"],
             "publishedAt": article["publishedAt"],
-            "content": article["content"]
         }
         for article in news_sources["articles"]
     ]
     
     return jsonify({
-        'label': 'True',
         'matched_sources': articles
     }), 200    
 

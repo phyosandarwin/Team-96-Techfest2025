@@ -10,7 +10,7 @@ MODEL = "gemini-2.0-flash"
 # class for LLM
 class LLM:
     def __init__(self):
-        self.client = genai.GeminiClient(api_key=os.getenv("GEMINI_API_KEY"))
+        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     def extract_keywords_from_image(self, image):
         response = self.client.models.generate_content(

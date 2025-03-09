@@ -35,7 +35,6 @@ def scrape_endpoint():
 
         # Call the LLM function to extract keywords
         keywords = llm.extract_keywords_from_summary(summary)
-        print(keywords)
         
         # Call the news function to get matched sources
         news_sources = news.get_news_sources(keywords)
@@ -49,8 +48,6 @@ def scrape_endpoint():
             }
             for article in news_sources["articles"]
         ]
-
-        print(articles)
     
         return jsonify({
             'extracted_content': keywords,
@@ -82,8 +79,7 @@ def upload_image():
 
     # Call the news function to get matched sources
     news_sources = news.get_news_sources(keywords)
-    print(news_sources)
-    
+
     articles = [
         {
             "source_name": article["source"]["name"],
@@ -93,14 +89,12 @@ def upload_image():
         }
         for article in news_sources["articles"]
     ]
-    
-    print(articles)
 
     return jsonify({
         'extracted_content': keywords,
         'matched_sources': articles
     }), 200    
 
-if __name__ == "__main__":
+if __name__ == "main":
     # Start the Flask development server
     app.run(host="127.0.0.1", port=5000, debug=True)

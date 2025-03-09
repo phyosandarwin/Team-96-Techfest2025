@@ -6,12 +6,15 @@ from PIL import Image
 
 # Import the files
 from webscraping import scrape_website
-from MachineLearning.example import extract_keywords
+from utils import LLM, NewsAPI
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+llm = LLM()
+news = NewsAPI()
 
 @app.route('/scrape', methods=['GET'])
 def scrape_endpoint():
@@ -24,24 +27,33 @@ def scrape_endpoint():
     
     try:
         # Use the scrape_website function from webscraping.py
-        page_title, texts = scrape_website(input_url)
+        _, summary = scrape_website(input_url)
         
-        # Build output string
-        output_string = f"Page Title: {page_title}\n"
-        output_string += "Text:\n"
-        for text in texts:
-            output_string += f" - {text}\n"
+        # Build input string
+        output_string = "Article summary:\n"
+        output_string += '\n'.join(summary)
 
-        # do text preprocessing. "output_string" is the input 
-        # Example: keywords = extract_keywords(output_string)
-
-        # fact checking function needs to be called here (ie. news function)
-
+        # Call the LLM function to extract keywords
+        keywords = llm.extract_keywords_from_summary(output_string)
+        
+        # Call the news function to get matched sources
+        news_sources = news.get_news_sources(keywords)
+        
+        articles = [
+            {
+                "source_id": article["source"]["id"],
+                "source_name": article["source"]["name"],
+                "title": article["title"],
+                "url": article["url"],
+                "publishedAt": article["publishedAt"],
+                "content": article["content"]
+            }
+            for article in news_sources["articles"]
+        ]
     
-        # return the matched sources , and if got classification label, return the label also, otherwise remove label 
-        return jsonify({ 
-        'contents': 'true', 
-        'matched_sources': ['source_1', 'source_2']
+        return jsonify({
+            'contents': 'true',
+            'matched_sources': articles
         }), 200    
     
     except requests.exceptions.RequestException as e:
@@ -64,19 +76,27 @@ def upload_image():
     # Open the image for processing
     image = Image.open(file_path)
 
-    # call a CV function to extract text 
+    # Call the LLM function to extract keywords from image text
+    keywords = llm.extract_keywords_from_image(image)
 
-
-    # do text preprocessing 
-
-
-    # fact checking function needs to be called here (ie. news function)
-
+    # Call the news function to get matched sources
+    news_sources = news.get_news_sources(keywords)
     
-    # return the matched sources , and if got classification label, return the label also, otherwise remove label 
-    return jsonify({ 
-        'label': 'True', 
-        'matched_sources': ['source_1', 'source_2']
+    articles = [
+        {
+            "source_id": article["source"]["id"],
+            "source_name": article["source"]["name"],
+            "title": article["title"],
+            "url": article["url"],
+            "publishedAt": article["publishedAt"],
+            "content": article["content"]
+        }
+        for article in news_sources["articles"]
+    ]
+    
+    return jsonify({
+        'label': 'True',
+        'matched_sources': articles
     }), 200    
 
 if __name__ == "__main__":

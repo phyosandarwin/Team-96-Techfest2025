@@ -30,11 +30,12 @@ def scrape_endpoint():
         _, summary = scrape_website(input_url)
         
         # Build input string
-        output_string = "Article summary:\n"
-        output_string += '\n'.join(summary)
+        output_string = "Article summary:"
+        output_string += ''.join(summary)
 
         # Call the LLM function to extract keywords
-        keywords = llm.extract_keywords_from_summary(output_string)
+        keywords = llm.extract_keywords_from_summary(summary)
+        print(keywords)
         
         # Call the news function to get matched sources
         news_sources = news.get_news_sources(keywords)
@@ -48,8 +49,11 @@ def scrape_endpoint():
             }
             for article in news_sources["articles"]
         ]
+
+        print(articles)
     
         return jsonify({
+            'extracted_content': keywords,
             'matched_sources': articles
         }), 200    
     
@@ -78,6 +82,7 @@ def upload_image():
 
     # Call the news function to get matched sources
     news_sources = news.get_news_sources(keywords)
+    print(news_sources)
     
     articles = [
         {
@@ -89,7 +94,10 @@ def upload_image():
         for article in news_sources["articles"]
     ]
     
+    print(articles)
+
     return jsonify({
+        'extracted_content': keywords,
         'matched_sources': articles
     }), 200    
 

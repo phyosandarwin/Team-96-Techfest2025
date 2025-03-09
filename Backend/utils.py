@@ -15,16 +15,14 @@ class LLM:
     def extract_keywords_from_image(self, image):
         response = self.client.models.generate_content(
             model=MODEL,
-            contents=["Summarise the text in the image into one short keyphrase, highlighting the country, organisation, or notable individual if mentioned."
-                      , image],
+            contents=["Summarise the text in the image into a short keyphrase. Do not add any punctuation and newline character.", image],
         )
         return response.text
     
     def extract_keywords_from_summary(self, summary):
         response = self.client.models.generate_content(
             model=MODEL,
-            contents=["Extract keywords from the summary to form one short phrase, highlighting the country, organisation, or notable individual mentioned."
-                      , summary],
+            contents=["Summarise the text into a short keyphrase. Do not add any punctuation and newline character.", summary],
         )
         return response.text
     
@@ -34,7 +32,7 @@ class NewsAPI:
         self.client = NewsApiClient(api_key=os.getenv("NEWSAPI_API_KEY"))
 
     def get_news_sources(self, keywords):
-        top_headlines = self.client.get_top_headlines(q=keywords, sort_by='relevancy', pageSize=5)
+        top_headlines = self.client.get_top_headlines(q=keywords)
         return {
             "status": top_headlines["status"],
             "totalResults": top_headlines["totalResults"],

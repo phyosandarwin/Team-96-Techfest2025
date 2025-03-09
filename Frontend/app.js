@@ -361,11 +361,11 @@ function displayResults(result) {
             const sources = result.matched_sources || [];
             const sourceCount = sources.length;
             
-            if (sourceCount >= 2) {
+            if (sourceCount >= 5) {
                 category = "RELIABLE";
                 categoryClass = "bg-success";
                 description = "Content that has been verified by multiple reliable sources.";
-            } else if (sourceCount === 1) {
+            } else if (sourceCount >= 3) {
                 category = "NEUTRAL";
                 categoryClass = "bg-warning";
                 description = "Content that has limited verification from other sources. Exercise caution.";

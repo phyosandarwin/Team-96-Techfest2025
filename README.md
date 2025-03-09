@@ -1,5 +1,11 @@
 # Team-96-Techfest2025
 
+# Live site (deployed): [https://team96-verifiai.onrender.com/](https://team96-verifiai.onrender.com/)
+
+Try out our website live using the link above! 🚀
+
+Done by: Phyo, Quang, Boxuan
+
 ## Set Up 
 
 1. Clone the repository:

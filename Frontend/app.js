@@ -17,7 +17,6 @@ const noResults = document.getElementById('noResults');
 const resultCategory = document.getElementById('resultCategory');
 const resultDescription = document.getElementById('resultDescription');
 const resultSources = document.getElementById('resultSources');
-const extractedContent = document.getElementById('extractedContent');
 const matchedSources = document.getElementById('matchedSources');
 
 // Navigation elements
@@ -260,9 +259,8 @@ function setupForms() {
             
             const result = await response.json();
             
-            // Process the result using the exact backend format
-            const processedResult = processImageResult(result, imageUpload.files[0].name);
-            displayResults(processedResult);
+            // Process the result using the backend format
+            displayResults(result);
             
             // Reset button state
             verifyImageBtn.disabled = false;
@@ -321,9 +319,8 @@ function setupForms() {
             
             const result = await response.json();
             
-            // Process the result using the exact backend format
-            const processedResult = processUrlResult(result, url);
-            displayResults(processedResult);
+            // Display the results from backend
+            displayResults(result);
             
             // Reset button state
             verifyUrlBtn.disabled = false;
@@ -343,156 +340,6 @@ function setupForms() {
     });
 }
 
-// Process URL result - specifically for the current backend format
-function processUrlResult(backendData, originalUrl) {
-    // Default to neutral
-    const result = {
-        category: "NEUTRAL",
-        sourceCount: 0,
-        extracted_text: "No content extracted",
-        matched_sources: []
-    };
-    
-    if (!backendData) {
-        return result;
-    }
-    
-    // Check if 'contents' exists in response (the URL endpoint uses this)
-    if (backendData.contents) {
-        // Set the extracted text
-        result.extracted_text = typeof backendData.contents === 'string' ? backendData.contents : 'Content verification completed';
-        
-        // Determine if content is true/reliable based on the 'contents' field
-        // Current backend just returns 'true' as a string
-        if (backendData.contents === 'true') {
-            result.category = "RELIABLE";
-        } else {
-            result.category = "FAKE"; 
-        }
-    }
-    
-    // Process matched sources array
-    if (backendData.matched_sources && Array.isArray(backendData.matched_sources)) {
-        result.sourceCount = backendData.matched_sources.length;
-        
-        // Create source objects for display
-        result.matched_sources = backendData.matched_sources.map((source, index) => {
-            // Convert string source names to objects
-            return {
-                title: `Source ${index + 1}`,
-                source_name: source,
-                reliability: result.category === "RELIABLE" ? "high" : "low",
-                published_date: new Date().toISOString(),
-                url: "#", // No URLs provided by backend
-                snippet: "Source details not available"
-            };
-        });
-    }
-    
-    // Add original URL as a source if we don't have any
-    if (originalUrl && (result.matched_sources.length === 0)) {
-        try {
-            const hostname = new URL(originalUrl).hostname;
-            result.matched_sources.push({
-                title: "Original Article",
-                source_name: hostname,
-                reliability: result.category === "RELIABLE" ? "high" : "low",
-                published_date: new Date().toISOString(),
-                url: originalUrl,
-                snippet: "Original source that was verified"
-            });
-            
-            // Ensure at least one source is counted
-            if (result.sourceCount === 0) {
-                result.sourceCount = 1;
-            }
-        } catch (e) {
-            console.error('Error parsing URL:', e);
-        }
-    }
-    
-    // Adjust category based on source count if not already set
-    if (result.category === "NEUTRAL") {
-        if (result.sourceCount > 1) {
-            result.category = "RELIABLE";
-        } else if (result.sourceCount === 0) {
-            result.category = "FAKE";
-        }
-    }
-    
-    return result;
-}
-
-// Process image result - specifically for the current backend format
-function processImageResult(backendData, imageName) {
-    // Default to neutral
-    const result = {
-        category: "NEUTRAL",
-        sourceCount: 0,
-        extracted_text: "Image content analyzed",
-        matched_sources: []
-    };
-    
-    if (!backendData) {
-        return result;
-    }
-    
-    // The image endpoint uses 'label' instead of 'contents'
-    if (backendData.label) {
-        // Case insensitive check for "true" or "True"
-        const isReliable = String(backendData.label).toLowerCase() === 'true';
-        
-        result.category = isReliable ? "RELIABLE" : "FAKE";
-        result.extracted_text = `Image verified as ${isReliable ? 'reliable' : 'potentially misleading'} content`;
-    }
-    
-    // Process matched sources array
-    if (backendData.matched_sources && Array.isArray(backendData.matched_sources)) {
-        result.sourceCount = backendData.matched_sources.length;
-        
-        // Create source objects for display
-        result.matched_sources = backendData.matched_sources.map((source, index) => {
-            // Convert string source names to objects
-            return {
-                title: `Source ${index + 1}`,
-                source_name: source,
-                reliability: result.category === "RELIABLE" ? "high" : "low",
-                published_date: new Date().toISOString(),
-                url: "#", // No URLs provided by backend
-                snippet: "Source details not available"
-            };
-        });
-    }
-    
-    // Add image as a source if we don't have any
-    if (imageName && (result.matched_sources.length === 0)) {
-        result.matched_sources.push({
-            title: "Original Image",
-            source_name: imageName,
-            reliability: result.category === "RELIABLE" ? "high" : "low",
-            published_date: new Date().toISOString(),
-            url: "#",
-            snippet: "Original image that was verified"
-        });
-        
-        // Ensure at least one source is counted
-        if (result.sourceCount === 0) {
-            result.sourceCount = 1;
-        }
-    }
-    
-    // Adjust category based on source count if not already set
-    if (result.category === "NEUTRAL") {
-        if (result.sourceCount > 1) {
-            result.category = "RELIABLE";
-        } else if (result.sourceCount === 0) {
-            result.category = "FAKE";
-        }
-    }
-    
-    return result;
-}
-
 // Display verification results with animations
 function displayResults(result) {
     hideLoading();
@@ -508,48 +355,52 @@ function displayResults(result) {
         resultsContent.style.opacity = '1';
         
         setTimeout(() => {
-            // Set category
-            let categoryClass;
-            let description;
+            // Set category based on keyword count
+            let category, categoryClass, description;
+            const keywords = result.extracted_content || "";
+            const sources = result.matched_sources || [];
+            const sourceCount = sources.length;
             
-            if (result.category === "FAKE") {
-                categoryClass = "bg-danger";
-                description = "Content that could not be verified with any reliable sources.";
-            } else if (result.category === "NEUTRAL") {
+            if (sourceCount >= 2) {
+                category = "RELIABLE";
+                categoryClass = "bg-success";
+                description = "Content that has been verified by multiple reliable sources.";
+            } else if (sourceCount === 1) {
+                category = "NEUTRAL";
                 categoryClass = "bg-warning";
                 description = "Content that has limited verification from other sources. Exercise caution.";
             } else {
-                categoryClass = "bg-success";
-                description = "Content that has been verified by multiple reliable sources.";
+                category = "FAKE";
+                categoryClass = "bg-danger";
+                description = "Content that could not be verified with any reliable sources.";
             }
             
             // Update result category display
-            resultCategory.textContent = result.category;
+            resultCategory.textContent = category;
             resultCategory.className = '';
             resultCategory.classList.add('result-category', categoryClass);
             
             // Update description and source count
             resultDescription.textContent = description;
-            resultSources.textContent = result.sourceCount;
-            
-            // Show extracted content
-            extractedContent.textContent = result.extracted_text || 'No text could be extracted';
+            resultSources.textContent = sourceCount;
             
             // Display matched sources with staggered animation
-            if (result.matched_sources && result.matched_sources.length > 0) {
+            if (sources && sources.length > 0) {
                 let sourcesHtml = '';
-                result.matched_sources.forEach((source, index) => {
-                    const reliabilityClass = getReliabilityClass(source.reliability);
+                sources.forEach((source, index) => {
+                    const reliability = sourceCount >= 2 ? "high" : sourceCount === 1 ? "medium" : "low";
+                    const reliabilityClass = getReliabilityClass(reliability);
+                    const publishedDate = source.publishedAt || new Date().toISOString();
+                    
                     sourcesHtml += `
                         <div class="matched-source" style="opacity: 0; transform: translateY(10px); transition: all 0.3s ease; transition-delay: ${0.1 * index}s;">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="mb-0">${source.title || 'Source'}</h6>
+                                <h6 class="mb-0">${source.title || source.source_name || 'Source'}</h6>
                                 <span class="source-reliability ${reliabilityClass}">
-                                    ${capitalizeFirstLetter(source.reliability || 'medium')} Reliability
+                                    ${capitalizeFirstLetter(reliability)} Reliability
                                 </span>
                             </div>
-                            <p class="small text-muted mb-2">${source.source_name || 'Unknown'} - ${formatDate(source.published_date)}</p>
-                            <p class="mb-2">${source.snippet || 'No details available'}</p>
+                            <p class="small text-muted mb-2">${source.source_name || 'Unknown'} - ${formatDate(publishedDate)}</p>
                             ${source.url && source.url !== '#' ? 
                               `<a href="${source.url}" target="_blank" class="btn btn-sm btn-outline-primary">View Source</a>` : 
                               '<span class="text-muted small">No source link available</span>'}
@@ -653,12 +504,10 @@ function setupShareButton() {
     function generateShareUrl() {
         // Create a URL with verification data encoded as parameters
         const category = document.getElementById('resultCategory').textContent;
-        const textContent = document.getElementById('extractedContent').textContent;
         const baseUrl = window.location.origin + window.location.pathname;
         const params = new URLSearchParams();
         
         params.append('category', category);
-        params.append('text', textContent.substring(0, 100) + '...');
         
         return `${baseUrl}?${params.toString()}`;
     }
@@ -671,7 +520,7 @@ function setupShareButton() {
         // Check if Web Share API is available
         if (navigator.share) {
             navigator.share({
-                title: 'Verification Results from SG News Verifier',
+                title: 'Verification Results from News Verifier',
                 text: `This content has been marked as ${document.getElementById('resultCategory').textContent}`,
                 url: url
             })
@@ -711,7 +560,7 @@ function setupShareButton() {
                 
                 const platform = this.getAttribute('data-platform');
                 const url = encodeURIComponent(shareUrl.value);
-                const text = encodeURIComponent(`Verification Results from SG News Verifier: This content has been marked as ${document.getElementById('resultCategory').textContent}`);
+                const text = encodeURIComponent(`Verification Results from News Verifier: This content has been marked as ${document.getElementById('resultCategory').textContent}`);
                 
                 let shareUrl;
                 

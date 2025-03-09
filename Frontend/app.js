@@ -27,6 +27,7 @@ const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
 // API endpoints - Update with proper backend URL
 const API_BASE_URL = 'http://127.0.0.1:5000';
 const VERIFY_URL_ENDPOINT = `${API_BASE_URL}/scrape`;
+const VERIFY_IMAGE_ENDPOINT = `${API_BASE_URL}/image`;
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
@@ -244,21 +245,30 @@ function setupForms() {
         
         // Create form data with image
         const formData = new FormData();
-        formData.append('image', imageUpload.files[0]);
+        formData.append('file', imageUpload.files[0]);
         
         try {
-            // TODO: Implement image upload and OCR processing
-            // For now, use mock data
-            setTimeout(async () => {
-                const mockResult = await mockApiResponse();
-                displayResults(mockResult);
-                
-                // Reset button state
-                verifyImageBtn.disabled = false;
-                verifyImageBtn.innerHTML = '<i class="bi bi-shield-check me-1"></i> Verify Image';
-                
-                showNotification('Image successfully verified!', 'success');
-            }, 1500);
+            // Send the image to the backend for verification
+            const response = await fetch(VERIFY_IMAGE_ENDPOINT, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Server responded with status ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            // Process the result using the exact backend format
+            const processedResult = processImageResult(result, imageUpload.files[0].name);
+            displayResults(processedResult);
+            
+            // Reset button state
+            verifyImageBtn.disabled = false;
+            verifyImageBtn.innerHTML = '<i class="bi bi-shield-check me-1"></i> Verify Image';
+            
+            showNotification('Image successfully verified!', 'success');
             
         } catch (error) {
             console.error('Error:', error);
@@ -311,8 +321,8 @@ function setupForms() {
             
             const result = await response.json();
             
-            // Process the result
-            const processedResult = processBackendResponse(result, url);
+            // Process the result using the exact backend format
+            const processedResult = processUrlResult(result, url);
             displayResults(processedResult);
             
             // Reset button state
@@ -333,68 +343,150 @@ function setupForms() {
     });
 }
 
-// Process backend response to match our display format
-function processBackendResponse(backendData, originalUrl) {
-    // Default to mock data structure
+// Process URL result - specifically for the current backend format
+function processUrlResult(backendData, originalUrl) {
+    // Default to neutral
     const result = {
-        category: "FAKE",
+        category: "NEUTRAL",
         sourceCount: 0,
         extracted_text: "No content extracted",
         matched_sources: []
     };
     
-    // Check if content exists
-    if (backendData && backendData.content) {
+    if (!backendData) {
+        return result;
+    }
+    
+    // Check if 'contents' exists in response (the URL endpoint uses this)
+    if (backendData.contents) {
         // Set the extracted text
-        result.extracted_text = backendData.content;
+        result.extracted_text = typeof backendData.contents === 'string' ? backendData.contents : 'Content verification completed';
         
-        // Count sources (for now, we're just using a simple string from the backend)
-        // In a real implementation, you would parse actual sources
-        const sourceCount = backendData.content.includes("true") ? 3 : 
-                          backendData.content.includes("neutral") ? 1 : 0;
-                          
-        result.sourceCount = sourceCount;
-        
-        // Set category based on source count
-        if (sourceCount > 1) {
+        // Determine if content is true/reliable based on the 'contents' field
+        // Current backend just returns 'true' as a string
+        if (backendData.contents === 'true') {
             result.category = "RELIABLE";
-        } else if (sourceCount === 1) {
-            result.category = "NEUTRAL";
         } else {
-            result.category = "FAKE";
+            result.category = "FAKE"; 
         }
+    }
+    
+    // Process matched sources array
+    if (backendData.matched_sources && Array.isArray(backendData.matched_sources)) {
+        result.sourceCount = backendData.matched_sources.length;
         
-        // Add the original URL as a source
-        result.matched_sources = [{
-            title: "Original Article",
-            source_name: new URL(originalUrl).hostname,
-            reliability: sourceCount > 1 ? "high" : sourceCount === 1 ? "medium" : "low",
-            published_date: new Date().toISOString(),
-            url: originalUrl,
-            snippet: result.extracted_text.substring(0, 150) + "..."
-        }];
-        
-        // Add mock sources for testing
-        if (sourceCount > 0) {
-            result.matched_sources.push({
-                title: "Similar news article",
-                source_name: "News Source",
-                reliability: "medium",
+        // Create source objects for display
+        result.matched_sources = backendData.matched_sources.map((source, index) => {
+            // Convert string source names to objects
+            return {
+                title: `Source ${index + 1}`,
+                source_name: source,
+                reliability: result.category === "RELIABLE" ? "high" : "low",
                 published_date: new Date().toISOString(),
-                url: "https://example.com/news",
-                snippet: "Similar content found matching the verified article..."
+                url: "#", // No URLs provided by backend
+                snippet: "Source details not available"
+            };
+        });
+    }
+    
+    // Add original URL as a source if we don't have any
+    if (originalUrl && (result.matched_sources.length === 0)) {
+        try {
+            const hostname = new URL(originalUrl).hostname;
+            result.matched_sources.push({
+                title: "Original Article",
+                source_name: hostname,
+                reliability: result.category === "RELIABLE" ? "high" : "low",
+                published_date: new Date().toISOString(),
+                url: originalUrl,
+                snippet: "Original source that was verified"
             });
             
-            if (sourceCount > 1) {
-                result.matched_sources.push({
-                    title: "Additional verification source",
-                    source_name: "Verified Media",
-                    reliability: "high",
-                    published_date: new Date().toISOString(),
-                    url: "https://trusted-source.com/article",
-                    snippet: "Additional source confirming the news content..."
-                });
+            // Ensure at least one source is counted
+            if (result.sourceCount === 0) {
+                result.sourceCount = 1;
             }
+        } catch (e) {
+            console.error('Error parsing URL:', e);
+        }
+    }
+    
+    // Adjust category based on source count if not already set
+    if (result.category === "NEUTRAL") {
+        if (result.sourceCount > 1) {
+            result.category = "RELIABLE";
+        } else if (result.sourceCount === 0) {
+            result.category = "FAKE";
+        }
+    }
+    
+    return result;
+}
+
+// Process image result - specifically for the current backend format
+function processImageResult(backendData, imageName) {
+    // Default to neutral
+    const result = {
+        category: "NEUTRAL",
+        sourceCount: 0,
+        extracted_text: "Image content analyzed",
+        matched_sources: []
+    };
+    
+    if (!backendData) {
+        return result;
+    }
+    
+    // The image endpoint uses 'label' instead of 'contents'
+    if (backendData.label) {
+        // Case insensitive check for "true" or "True"
+        const isReliable = String(backendData.label).toLowerCase() === 'true';
+        
+        result.category = isReliable ? "RELIABLE" : "FAKE";
+        result.extracted_text = `Image verified as ${isReliable ? 'reliable' : 'potentially misleading'} content`;
+    }
+    
+    // Process matched sources array
+    if (backendData.matched_sources && Array.isArray(backendData.matched_sources)) {
+        result.sourceCount = backendData.matched_sources.length;
+        
+        // Create source objects for display
+        result.matched_sources = backendData.matched_sources.map((source, index) => {
+            // Convert string source names to objects
+            return {
+                title: `Source ${index + 1}`,
+                source_name: source,
+                reliability: result.category === "RELIABLE" ? "high" : "low",
+                published_date: new Date().toISOString(),
+                url: "#", // No URLs provided by backend
+                snippet: "Source details not available"
+            };
+        });
+    }
+    
+    // Add image as a source if we don't have any
+    if (imageName && (result.matched_sources.length === 0)) {
+        result.matched_sources.push({
+            title: "Original Image",
+            source_name: imageName,
+            reliability: result.category === "RELIABLE" ? "high" : "low",
+            published_date: new Date().toISOString(),
+            url: "#",
+            snippet: "Original image that was verified"
+        });
+        
+        // Ensure at least one source is counted
+        if (result.sourceCount === 0) {
+            result.sourceCount = 1;
+        }
+    }
+    
+    // Adjust category based on source count if not already set
+    if (result.category === "NEUTRAL") {
+        if (result.sourceCount > 1) {
+            result.category = "RELIABLE";
+        } else if (result.sourceCount === 0) {
+            result.category = "FAKE";
         }
     }
     
@@ -451,14 +543,16 @@ function displayResults(result) {
                     sourcesHtml += `
                         <div class="matched-source" style="opacity: 0; transform: translateY(10px); transition: all 0.3s ease; transition-delay: ${0.1 * index}s;">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="mb-0">${source.title}</h6>
+                                <h6 class="mb-0">${source.title || 'Source'}</h6>
                                 <span class="source-reliability ${reliabilityClass}">
-                                    ${capitalizeFirstLetter(source.reliability)} Reliability
+                                    ${capitalizeFirstLetter(source.reliability || 'medium')} Reliability
                                 </span>
                             </div>
-                            <p class="small text-muted mb-2">${source.source_name} - ${formatDate(source.published_date)}</p>
-                            <p class="mb-2">${source.snippet}</p>
-                            <a href="${source.url}" target="_blank" class="btn btn-sm btn-outline-primary">View Source</a>
+                            <p class="small text-muted mb-2">${source.source_name || 'Unknown'} - ${formatDate(source.published_date)}</p>
+                            <p class="mb-2">${source.snippet || 'No details available'}</p>
+                            ${source.url && source.url !== '#' ? 
+                              `<a href="${source.url}" target="_blank" class="btn btn-sm btn-outline-primary">View Source</a>` : 
+                              '<span class="text-muted small">No source link available</span>'}
                         </div>
                     `;
                 });
@@ -777,39 +871,4 @@ function showNotification(message, type = 'info') {
             alert(message);
         }
     }
-}
-
-// Mock API response for testing
-function mockApiResponse() {
-    return {
-        category: "RELIABLE",
-        sourceCount: 3,
-        extracted_text: "Singapore Prime Minister announces new healthcare policies aimed at supporting elderly care. The Ministry of Health will be increasing subsidies for long-term care services starting next month.",
-        matched_sources: [
-            {
-                title: "PM announces enhanced healthcare subsidies for elderly",
-                source_name: "The Straits Times",
-                reliability: "high",
-                published_date: "2025-03-05T08:30:00Z",
-                url: "https://www.straitstimes.com/singapore/health/pm-announces-healthcare-subsidies",
-                snippet: "Prime Minister announced today an increase in healthcare subsidies aimed at supporting the elderly population. The new policy will take effect from April 1."
-            },
-            {
-                title: "Government boosts elderly care support with new subsidies",
-                source_name: "Channel News Asia",
-                reliability: "high",
-                published_date: "2025-03-05T09:15:00Z",
-                url: "https://www.channelnewsasia.com/singapore/elderly-care-subsidies-increase",
-                snippet: "The Ministry of Health will be increasing subsidies for long-term care services, with additional support for lower-income families."
-            },
-            {
-                title: "New healthcare policy for elderly citizens announced",
-                source_name: "Today Online",
-                reliability: "high",
-                published_date: "2025-03-05T10:30:00Z",
-                url: "https://www.todayonline.com/singapore/new-healthcare-policy-elderly",
-                snippet: "The government has announced a comprehensive package to support elderly care, focusing on affordable healthcare services and caregiving support."
-            }
-        ]
-    };
 }

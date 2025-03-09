@@ -32,7 +32,8 @@ class NewsAPI:
         self.client = NewsApiClient(api_key=os.getenv("NEWSAPI_API_KEY"))
 
     def get_news_sources(self, keywords):
-        top_headlines = self.client.get_everything(q=keywords, sort_by='relevancy')
+
+        top_headlines = self.client.get_everything(q=keywords, sort_by='relevancy', language='en')
         return {
             "status": top_headlines["status"],
             "totalResults": top_headlines["totalResults"],

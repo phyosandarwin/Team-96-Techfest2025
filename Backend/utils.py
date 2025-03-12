@@ -15,14 +15,14 @@ class LLM:
     def extract_keywords_from_image(self, image):
         response = self.client.models.generate_content(
             model=MODEL,
-            contents = ["If the image contains headlines, return the headline text. If no headlines are detected, summarise the text and return key keywords. If no text is found in the image, respond with 'No text detected in the image.'", image]
+            contents = ["Summarise the text in the image into three words. If no text is found in the image, respond with 'No text detected in the image.'", image]
         )
         return response.text
     
     def extract_keywords_from_summary(self, summary):
         response = self.client.models.generate_content(
             model=MODEL,
-            contents=["Summarise the text into one short search query. Do not add any punctuation.", summary],
+            contents=["Summarise the text into a short keyphrase. Do not add any punctuation.", summary],
         )
         return response.text
     

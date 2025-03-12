@@ -28,16 +28,14 @@ def scrape_endpoint():
     try:
         # Use the scrape_website function from webscraping.py
         _, summary = scrape_website(input_url)
-        
-        # Build input string
-        output_string = "Article summary:"
-        output_string += ''.join(summary)
+
+        print(summary)
 
         # Call the LLM function to extract keywords
-        keywords = llm.extract_keywords_from_summary(summary)
+        response = llm.extract_keywords_from_summary(summary)
         
         # Call the news function to get matched sources
-        news_sources = news.get_news_sources(keywords)
+        news_sources = news.get_news_sources(response)
         
         articles = [
             {
@@ -50,7 +48,7 @@ def scrape_endpoint():
         ]
     
         return jsonify({
-            'extracted_content': keywords,
+            'extracted_content': response,
             'matched_sources': articles
         }), 200    
     
@@ -75,10 +73,13 @@ def upload_image():
     image = Image.open(file_path)
 
     # Call the LLM function to extract keywords from image text
-    keywords = llm.extract_keywords_from_image(image)
+    response = llm.extract_keywords_from_image(image)
+
+    if response == "No text detected in the image.":
+        return jsonify({"error": response}),
 
     # Call the news function to get matched sources
-    news_sources = news.get_news_sources(keywords)
+    news_sources = news.get_news_sources(response)
 
     articles = [
         {
@@ -91,7 +92,7 @@ def upload_image():
     ]
 
     return jsonify({
-        'extracted_content': keywords,
+        'extracted_content': response,
         'matched_sources': articles
     }), 200    
 

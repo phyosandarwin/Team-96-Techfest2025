@@ -18,41 +18,41 @@ news = NewsAPI()
 
 @app.route('/scrape', methods=['GET'])
 def scrape_endpoint():
-    # Retrieve the 'url' parameter from the query string
+    """API endpoint to scrape a website, extract keywords, and find news sources."""
     input_url = request.args.get('url')
-    
-    # If no URL provided, return 400 Bad Request
+
     if not input_url:
         return jsonify({"error": "No 'url' query parameter provided"}), 400
-    
-    try:
-        # Use the scrape_website function from webscraping.py
-        _, summary = scrape_website(input_url)
 
+    page_title, summary = scrape_website(input_url)
+
+    if not summary:
+        return jsonify({"error": page_title}), 500
+
+    try:
         # Call the LLM function to extract keywords
         response = llm.extract_keywords_from_summary(summary)
         
         # Call the news function to get matched sources
         news_sources = news.get_news_sources(response)
-        
+
         articles = [
             {
-                "source_name": article["source"]["name"],
-                "title": article["title"],
-                "url": article["url"],
-                "publishedAt": article["publishedAt"],
+                "source_name": article.get("source", {}).get("name", "Unknown"),
+                "title": article.get("title", "No title"),
+                "url": article.get("url", ""),
+                "publishedAt": article.get("publishedAt", "Unknown date"),
             }
-            for article in news_sources["articles"]
+            for article in news_sources.get("articles", [])
         ]
-    
+
         return jsonify({
             'extracted_content': response,
             'matched_sources': articles
-        }), 200    
-    
-    except requests.exceptions.RequestException as e:
-        # Handle any request-related exceptions
-        return jsonify({"error": str(e)}), 500
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Processing error: {e}"}), 500
 
 @app.route('/image', methods=['POST'])
 def upload_image():
@@ -93,6 +93,19 @@ def upload_image():
         'extracted_content': response,
         'matched_sources': articles
     }), 200    
+
+@app.route('/delete_uploads', methods=['POST'])
+def delete_uploads():
+    try:
+        folder = UPLOAD_FOLDER
+        for filename in os.listdir(folder):
+            file_path = os.path.join(folder, filename)
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
+        return jsonify({"message": "All images removed successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "main":
     # Start the Flask development server

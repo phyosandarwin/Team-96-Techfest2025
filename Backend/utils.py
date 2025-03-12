@@ -15,28 +15,76 @@ class LLM:
     def extract_keywords_from_image(self, image):
         response = self.client.models.generate_content(
             model=MODEL,
-            contents = ["Summarise the text in the image into three words. If no text is found in the image, respond with 'No text detected in the image.'", image]
+            contents = ["Thoroughly check the image for any text. Summarise it into a string of 3 keywords, without punctuation. If no text is found, respond with 'No text detected in the image.'", image]
         )
+        print(response.text)
         return response.text
     
     def extract_keywords_from_summary(self, summary):
         response = self.client.models.generate_content(
             model=MODEL,
-            contents=["Summarise the text into a short keyphrase. Do not add any punctuation.", summary],
+            contents=["Summarise the text into a string of 3 keywords, without any punctuation.", summary],
         )
         return response.text
     
 # class to return news sources
 class NewsAPI:
+    DOMAINS = [
+        "who.int",  
+        "un.org",  
+        "imf.org",  
+        "worldbank.org",  
+        "oecd.org",  
+        "mothership.sg",
+        "straitstimes.com",
+        "channelnewsasia.com",
+        "todayonline.com",
+        "zaobao.com.sg",
+        "businesstimes.com.sg",
+        "bbc.com",
+        "bbc.co.uk",
+        "reuters.com",
+        "apnews.com",
+        "theguardian.com",
+        "nytimes.com",
+        "washingtonpost.com",
+        "cnn.com",
+        "npr.org",  
+        "wsj.com",  
+        "bloomberg.com",
+        "abcnews.go.com",
+        "cbsnews.com",
+        "nbcnews.com",
+        "latimes.com",
+        "snopes.com",
+        "factcheck.org",
+        "politifact.com",
+        "fullfact.org",  
+        "truthout.org",  
+        "sciencedirect.com",
+        "nature.com",
+        "sciencemag.org",
+        "nationalgeographic.com",
+        "newscientist.com",
+        "malwarebytes.com",
+        "kaspersky.com",
+        "mcafee.com",
+    ]
+
     def __init__(self):
         self.client = NewsApiClient(api_key=os.getenv("NEWSAPI_API_KEY"))
 
     def get_news_sources(self, keywords):
-
-        top_headlines = self.client.get_everything(q=keywords, sort_by='relevancy', language='en')
+        domains_str = ','.join(self.DOMAINS)
+        all_headlines = self.client.get_everything(
+            q=keywords,
+            domains=domains_str,
+            sort_by='relevancy',
+            language='en'
+        )
         return {
-            "status": top_headlines["status"],
-            "totalResults": top_headlines["totalResults"],
+            "status": all_headlines["status"],
+            "totalResults": all_headlines["totalResults"],
             "articles": [
                 {
                     "source": {
@@ -48,6 +96,6 @@ class NewsAPI:
                     "publishedAt": article["publishedAt"],
                     "content": article["content"]
                 }
-                for article in top_headlines["articles"]
+                for article in all_headlines["articles"]
             ]
         }

@@ -153,7 +153,7 @@ function setupDropZone() {
     });
 
     // Remove image button
-    removeImage.addEventListener('click', (e) => {
+    removeImage.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
         
@@ -161,7 +161,7 @@ function setupDropZone() {
         imagePreview.style.opacity = '0';
         imagePreview.style.transform = 'scale(0.95)';
         
-        setTimeout(() => {
+        setTimeout(async () => {
             imageUpload.value = '';
             imagePreview.classList.add('d-none');
             
@@ -176,6 +176,23 @@ function setupDropZone() {
             }, 50);
             
             verifyImageBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/delete_uploads`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || "Failed to delete images");
+                }
+                showNotification('All images removed successfully', 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Failed to delete images', 'danger');
+            }
         }, 300);
     });
 

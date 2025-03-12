@@ -29,8 +29,6 @@ def scrape_endpoint():
         # Use the scrape_website function from webscraping.py
         _, summary = scrape_website(input_url)
 
-        print(summary)
-
         # Call the LLM function to extract keywords
         response = llm.extract_keywords_from_summary(summary)
         

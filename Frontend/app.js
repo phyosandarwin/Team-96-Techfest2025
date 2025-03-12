@@ -255,7 +255,7 @@ function setupForms() {
             
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || "Link not valid");
+                throw new Error(errorData.error || "No text detected in image");
             }
             
             const result = await response.json();
@@ -271,7 +271,7 @@ function setupForms() {
             
         } catch (error) {
             console.error('Error:', error);
-            showNotification('Error verifying image: ' + error.message, 'danger');
+            showNotification('No text detected in image', 'danger');
             hideLoading();
             
             // Reset button state

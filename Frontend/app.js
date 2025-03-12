@@ -254,7 +254,8 @@ function setupForms() {
             });
             
             if (!response.ok) {
-                throw new Error(`Server responded with status ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Link not valid");
             }
             
             const result = await response.json();
@@ -314,7 +315,8 @@ function setupForms() {
             });
             
             if (!response.ok) {
-                throw new Error(`Server responded with status ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Link not valid");
             }
             
             const result = await response.json();
@@ -330,7 +332,7 @@ function setupForms() {
             
         } catch (error) {
             console.error('Error:', error);
-            showNotification('Error verifying URL: ' + error.message, 'danger');
+            showNotification('Link not valid', 'danger');
             hideLoading();
             
             // Reset button state
@@ -388,17 +390,12 @@ function displayResults(result) {
             if (sources && sources.length > 0) {
                 let sourcesHtml = '';
                 sources.forEach((source, index) => {
-                    const reliability = sourceCount >= 2 ? "high" : sourceCount === 1 ? "medium" : "low";
-                    const reliabilityClass = getReliabilityClass(reliability);
                     const publishedDate = source.publishedAt || new Date().toISOString();
                     
                     sourcesHtml += `
                         <div class="matched-source" style="opacity: 0; transform: translateY(10px); transition: all 0.3s ease; transition-delay: ${0.1 * index}s;">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="mb-2">
                                 <h6 class="mb-0">${source.title || source.source_name || 'Source'}</h6>
-                                <span class="source-reliability ${reliabilityClass}">
-                                    ${capitalizeFirstLetter(reliability)} Reliability
-                                </span>
                             </div>
                             <p class="small text-muted mb-2">${source.source_name || 'Unknown'} - ${formatDate(publishedDate)}</p>
                             ${source.url && source.url !== '#' ? 
